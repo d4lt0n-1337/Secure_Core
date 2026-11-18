@@ -70,6 +70,9 @@ class MLInference:
         """
         try:
             import joblib
+            import __main__
+            from app.validators import FeatureOrderValidator
+            setattr(__main__, 'FeatureOrderValidator', FeatureOrderValidator)
 
             binary_path_abs = str(Path(binary_path).expanduser().resolve())
             classification_path_abs = str(Path(classification_path).expanduser().resolve())

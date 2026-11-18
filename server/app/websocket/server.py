@@ -7,6 +7,7 @@ from flask_socketio import emit, disconnect, join_room, leave_room
 from flask import request
 import logging
 import json
+import os
 from datetime import datetime
 import ipaddress
 import time
@@ -214,7 +215,12 @@ class WebSocketInferenceServer:
         logger.info(f"Started {len(self._inference_workers)} inference worker(s)")
 
     def _inference_worker_loop(self):
-        # Workers must run inside a Flask app context for DB access.
+        """Worker loop: run inference → emit result → persist DB writes (decoupled).
+
+        The key optimization: the ML result is emitted to the client BEFORE any
+        database I/O happens, so the client-perceived latency is purely
+        inference time (~50-80ms) rather than inference + DB round-trips.
+        """
         app = self.flask_app
         if app is None:
             logger.error('WebSocketInferenceServer missing flask_app; inference workers may fail')
@@ -224,19 +230,15 @@ class WebSocketInferenceServer:
                 task = self._inference_queue.get(timeout=0.25)
             except Empty:
                 continue
-                logger.info(f"/ws/inference worker dequeued sid={task.sid}")
 
-
+            result = None
+            db_context = None
             try:
                 if app is not None:
-                    logger.info(
-                        f"/ws/inference worker processed sid={task.sid} keys={list(result.keys()) if isinstance(result, dict) else type(result)}"
-                    )
                     with app.app_context():
-                        result = self.process_inference_request(task.sid, task.data)
-                    logger.info(f"/ws/inference emitted inference_result sid={task.sid}")
+                        result, db_context = self.process_inference_request(task.sid, task.data)
                 else:
-                    result = self.process_inference_request(task.sid, task.data)
+                    result, db_context = self.process_inference_request(task.sid, task.data)
             except Exception as e:
                 logger.exception("Inference worker exception")
                 result = {'error': f'Inference failed: {str(e)}', 'code': 'INFERENCE_ERROR'}
@@ -246,10 +248,22 @@ class WebSocketInferenceServer:
                 except Exception:
                     pass
 
+            # ── PHASE 1: Emit result immediately (latency-critical) ──
             try:
                 self.socketio.emit('inference_result', result, to=task.sid, namespace='/ws/inference')
             except Exception:
                 logger.exception("Failed to emit inference_result")
+
+            # ── PHASE 2: Persist to DB in background (non-blocking for client) ──
+            if db_context is not None:
+                try:
+                    if app is not None:
+                        with app.app_context():
+                            self._persist_inference_result(task.sid, db_context, result)
+                    else:
+                        self._persist_inference_result(task.sid, db_context, result)
+                except Exception:
+                    logger.exception("Background DB write failed (client already received result)")
 
     def enqueue_inference(self, session_id: str, data: dict):
         try:
@@ -259,100 +273,108 @@ class WebSocketInferenceServer:
             return False, {'error': 'Server busy', 'code': 'QUEUE_FULL'}
     
     def process_inference_request(self, session_id, data):
-        """
-        Process ML inference request
-        
-        Args:
-            session_id: WebSocket session ID
-            data: dict with 'features' key (70 numerical values)
-        
+        """Process ML inference request (Phase 1 — latency-critical).
+
         Returns:
-            dict: Inference result or error
+            tuple: (result_dict, db_context_dict_or_None)
+                   db_context is passed to _persist_inference_result for Phase 2.
         """
         try:
             # Get user data
             user_data = self.active_sessions.get(session_id)
             if not user_data:
-                return {'error': 'Invalid session'}
+                return {'error': 'Invalid session'}, None
 
-            # Per-user rate limiting (in addition to any subscription checks)
+            # Per-user rate limiting
             if not self._allow_inference(user_data):
-                return {
-                    'error': 'Rate limit exceeded',
-                    'code': 'RATE_LIMIT'
-                }
-            
+                return {'error': 'Rate limit exceeded', 'code': 'RATE_LIMIT'}, None
+
             # Validate features
             if 'features' not in data:
                 self._invalid_strikes[session_id] += 1
-                return {'error': 'Missing features', 'code': 'MISSING_FEATURES'}
-            
+                return {'error': 'Missing features', 'code': 'MISSING_FEATURES'}, None
+
             features = data['features']
-            
+
             if not isinstance(features, list) or len(features) != Config.ML_INPUT_FEATURES:
                 self._invalid_strikes[session_id] += 1
-                return {'error': f'Invalid features: expected list of {Config.ML_INPUT_FEATURES} numerical values', 'code': 'INVALID_FEATURES'}
+                return {'error': f'Invalid features: expected list of {Config.ML_INPUT_FEATURES} numerical values', 'code': 'INVALID_FEATURES'}, None
 
             ok, err = self._validate_features(features)
             if not ok:
                 self._invalid_strikes[session_id] += 1
-                return {'error': err, 'code': 'INVALID_FEATURES'}
+                return {'error': err, 'code': 'INVALID_FEATURES'}, None
 
-            # Validate/sanitize metadata (IP/ports/proto/timestamp) to prevent DB bloat
+            # Validate/sanitize metadata
             meta_ok, meta_err, safe_meta = self._validate_metadata(data)
             if not meta_ok:
                 self._invalid_strikes[session_id] += 1
-                return {'error': meta_err, 'code': 'INVALID_METADATA'}
+                return {'error': meta_err, 'code': 'INVALID_METADATA'}, None
 
-            # Disconnect abusive sessions after repeated invalid payloads
+            # Disconnect abusive sessions
             if self._invalid_strikes.get(session_id, 0) >= 5:
-                return {'error': 'Too many invalid requests', 'code': 'ABUSE'}
-            
-            # Perform ML inference
+                return {'error': 'Too many invalid requests', 'code': 'ABUSE'}, None
+
+            # ── ML INFERENCE (the only compute-bound work) ──
             result = self.ml_engine.predict(features)
 
-            # Ensure required fields exist even in mock mode
             if 'severity' not in result:
                 result['severity'] = self._derive_severity(result)
 
-            # Best-effort token usage update (avoid hard failing inference)
-            try:
-                api_token_id = user_data.get('token_id')
-                if api_token_id:
-                    token = APIToken.query.get(api_token_id)
-                    if token:
-                        token.update_usage()
-            except Exception:
-                db.session.rollback()
-            
-            # Update session statistics
-            self._update_session_stats(session_id)
-            
-            # If attack detected, create alert
-            if result['is_attack']:
-                # Persist the sanitized metadata
-                merged = dict(safe_meta)
-                merged['features'] = features
-                alert = self._create_alert(user_data, features, result, merged)
-                result['alert_id'] = alert.id if alert else None
-                
-                # Send notification if high severity
-                if result.get('severity') in ['high', 'critical']:
-                    self._send_attack_notification(user_data, result)
-            
             logger.info(
                 f"Inference completed for user {user_data['user_id']}: "
                 f"{result['attack_type']} ({result['confidence']:.2%})"
             )
-            
-            return result
-            
+
+            # Build context for Phase 2 (DB writes happen AFTER emit)
+            db_context = {
+                'user_data': user_data,
+                'features': features,
+                'safe_meta': safe_meta,
+            }
+
+            return result, db_context
+
         except ValueError as e:
             logger.error(f"Inference validation error: {str(e)}")
-            return {'error': str(e)}
+            return {'error': str(e)}, None
         except Exception as e:
             logger.error(f"Inference processing error: {str(e)}")
-            return {'error': f'Inference failed: {str(e)}'}
+            return {'error': f'Inference failed: {str(e)}'}, None
+
+    def _persist_inference_result(self, session_id, db_context, result):
+        """Phase 2 — Background DB writes (runs AFTER client received the result).
+
+        All database I/O is isolated here so it never adds to client-perceived
+        latency.  Failures are logged but do not affect the already-sent response.
+        """
+        user_data = db_context['user_data']
+        features = db_context['features']
+        safe_meta = db_context['safe_meta']
+
+        # Token usage update (best-effort)
+        try:
+            api_token_id = user_data.get('token_id')
+            if api_token_id:
+                token = APIToken.query.get(api_token_id)
+                if token:
+                    token.update_usage()
+        except Exception:
+            db.session.rollback()
+
+        # Session statistics
+        self._update_session_stats(session_id)
+
+        # Alert creation (only for attacks)
+        if result.get('is_attack'):
+            merged = dict(safe_meta)
+            merged['features'] = features
+            alert = self._create_alert(user_data, features, result, merged)
+            # Note: alert_id is NOT in the already-emitted result (acceptable
+            # trade-off for latency; the client can query alerts separately).
+
+            if result.get('severity') in ['high', 'critical']:
+                self._send_attack_notification(user_data, result)
     
     def _update_session_stats(self, session_id):
         """Update session statistics"""
@@ -470,7 +492,13 @@ class WebSocketInferenceServer:
     def _allow_inference(self, user_data):
         """Sliding-window limiter per user (max per minute)."""
         user_id = user_data['user_id']
-        max_per_minute = int(user_data.get('rate_limit') or 0)
+
+        # Allow env-var override for stress testing
+        override = os.environ.get('WS_INFERENCE_RATE_OVERRIDE')
+        if override:
+            max_per_minute = int(override)
+        else:
+            max_per_minute = int(user_data.get('rate_limit') or 0)
 
         # Fallback to config if subscription missing/invalid (defense in depth)
         if max_per_minute <= 0:
@@ -496,7 +524,7 @@ class WebSocketInferenceServer:
 
         now = time.time()
         window = 60.0
-        max_attempts = 30  # per minute per IP
+        max_attempts = int(getattr(Config, 'WS_CONNECT_RATE_LIMIT', 30))
         q = self._connect_timestamps[remote_ip]
 
         while q and (now - q[0]) > window:

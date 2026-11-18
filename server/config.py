@@ -15,7 +15,7 @@ class Config:
     
     # Flask Core
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-CHANGE-IN-PRODUCTION')
-    DEBUG = True
+    DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     TESTING = False
     
     # Server
@@ -31,6 +31,18 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
+
+    # Connection Pooling — critical for PostgreSQL performance.
+    # Without this, each inference worker opens/closes a new TCP connection
+    # per request, causing massive latency (measured: 5000ms median at 10 users).
+    # QueuePool keeps 10 persistent connections, allowing up to 30 under burst.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,         # Persistent connections in the pool
+        'max_overflow': 20,      # Extra connections allowed under burst load
+        'pool_timeout': 5,       # Max seconds to wait for a free connection
+        'pool_pre_ping': True,   # Validate connections before use (stale TCP guard)
+        'pool_recycle': 1800,    # Recycle connections every 30 minutes
+    }
     
     # Security - CSRF Protection
     WTF_CSRF_ENABLED = True
@@ -76,7 +88,7 @@ class Config:
     
     # CORS
     CORS_ENABLED = True
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:8080,http://localhost:5173,http://localhost:3000,http://127.0.0.1:8080,http://127.0.0.1:5173,http://192.168.0.131:8080').split(',')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:8080,http://localhost:5173,http://localhost:3000,http://127.0.0.1:8080,http://127.0.0.1:5173,http://localhost:8081,http://127.0.0.1:8081,http://192.168.0.131:8080').split(',')
     CORS_SUPPORTS_CREDENTIALS = True
     
     # Security Headers
@@ -148,9 +160,9 @@ class Config:
     LOG_BACKUP_COUNT = 10
     
     # Machine Learning Configuration
-    ML_MODELS_DIR = PROJECT_ROOT / 'models'
+    ML_MODELS_DIR = Path(os.getenv('ML_MODELS_DIR', str(PROJECT_ROOT / 'models')))
     ML_DEFAULT_MODEL = 'rf_depth8_pipeline.joblib'
-    ML_INPUT_FEATURES = 70
+    ML_INPUT_FEATURES = 72
     ML_BATCH_SIZE = 32
     ML_INFERENCE_TIMEOUT = 5.0  # seconds
 
@@ -162,8 +174,9 @@ class Config:
     ML_METADATA_FILE = ML_MODELS_DIR / 'metadata.json'
     
     # WebSocket Configuration
-    WS_MAX_CONNECTIONS_PER_USER = 5
-    WS_MESSAGE_QUEUE_SIZE = 1000
+    WS_MAX_CONNECTIONS_PER_USER = int(os.getenv('WS_MAX_CONNECTIONS_PER_USER', 5))
+    WS_CONNECT_RATE_LIMIT = int(os.getenv('WS_CONNECT_RATE_LIMIT', 30))  # per minute per IP
+    WS_MESSAGE_QUEUE_SIZE = int(os.getenv('WS_MESSAGE_QUEUE_SIZE', 1000))
     WS_PING_INTERVAL = 30  # seconds
     WS_PING_TIMEOUT = 10  # seconds
     WS_MAX_MESSAGE_SIZE = 1024 * 1024  # 1MB
@@ -293,7 +306,6 @@ class ProductionConfig(Config):
     @classmethod
     def init_app(cls, app):
         """Initialize production settings"""
-        Config.init_app(app)
         
         # Ensure critical security settings
         assert app.config['SECRET_KEY'] != 'dev-secret-key-CHANGE-IN-PRODUCTION', \

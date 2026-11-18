@@ -97,8 +97,12 @@ def ensure_directories(app):
         app.config['UPLOAD_FOLDER'],
         app.config['BACKUP_DIR'],
         app.config['DOWNLOADS_DIR'],
-        Path(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')).parent,
     ]
+
+    # Only create a local DB directory for SQLite (PostgreSQL has no local path)
+    db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    if db_uri.startswith('sqlite:///'):
+        directories.append(Path(db_uri.replace('sqlite:///', '')).parent)
     
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
