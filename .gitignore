@@ -77,6 +77,9 @@ client/dist-ssr/
 instance/
 data/*.db
 
+# Uploads & Generated Reports
+uploads/
+
 # Logs
 logs/
 *.log
