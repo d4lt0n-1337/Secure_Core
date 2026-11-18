@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences
+WSS,inference_result,Inference failed: cannot access local variable 'result' where it is not associated with a value,8

@@ -1,0 +1,82 @@
+CIC-IDS2017 Feature Dictionary
+(Abbreviation | Full name | Short definition)
+
+DST_PORT | Destination Port | Destination TCP/UDP port for the flow.
+FLOW_DURATION | Flow Duration | Total duration of the flow (time between first and last packet).
+TOT_FWD_PKTS | Total Fwd Packets | Total number of packets sent in the forward direction.
+TOT_BWD_PKTS | Total Backward Packets | Total number of packets sent in the backward direction.
+TOTLEN_FWD_PKTS | Total Length of Fwd Packets | Sum of payload lengths (bytes) of forward packets.
+TOTLEN_BWD_PKTS | Total Length of Bwd Packets | Sum of payload lengths (bytes) of backward packets.
+FWD_PKT_LEN_MAX | Fwd Packet Length Max | Maximum forward packet length observed in the flow.
+FWD_PKT_LEN_MIN | Fwd Packet Length Min | Minimum forward packet length observed in the flow.
+FWD_PKT_LEN_MEAN | Fwd Packet Length Mean | Mean forward packet length in the flow.
+FWD_PKT_LEN_STD | Fwd Packet Length Std | Standard deviation of forward packet lengths.
+BWD_PKT_LEN_MAX | Bwd Packet Length Max | Maximum backward packet length observed in the flow.
+BWD_PKT_LEN_MIN | Bwd Packet Length Min | Minimum backward packet length observed in the flow.
+BWD_PKT_LEN_MEAN | Bwd Packet Length Mean | Mean backward packet length in the flow.
+BWD_PKT_LEN_STD | Bwd Packet Length Std | Standard deviation of backward packet lengths.
+FLOW_BYTES_PER_S | Flow Bytes/s | Average byte throughput over the flow duration (bytes per second).
+FLOW_PKTS_PER_S | Flow Packets/s | Average packet throughput over the flow duration (packets per second).
+FLOW_IAT_MEAN | Flow IAT Mean | Mean inter-arrival time between packets (both directions combined).
+FLOW_IAT_STD | Flow IAT Std | Standard deviation of inter-arrival times between packets.
+FLOW_IAT_MAX | Flow IAT Max | Maximum inter-arrival time between packets.
+FLOW_IAT_MIN | Flow IAT Min | Minimum inter-arrival time between packets.
+FWD_IAT_TOTAL | Fwd IAT Total | Total inter-arrival time sum for forward packets.
+FWD_IAT_MEAN | Fwd IAT Mean | Mean inter-arrival time between forward packets.
+FWD_IAT_STD | Fwd IAT Std | Standard deviation of inter-arrival times between forward packets.
+FWD_IAT_MAX | Fwd IAT Max | Maximum inter-arrival time between forward packets.
+FWD_IAT_MIN | Fwd IAT Min | Minimum inter-arrival time between forward packets.
+BWD_IAT_TOTAL | Bwd IAT Total | Total inter-arrival time sum for backward packets.
+BWD_IAT_MEAN | Bwd IAT Mean | Mean inter-arrival time between backward packets.
+BWD_IAT_STD | Bwd IAT Std | Standard deviation of inter-arrival times between backward packets.
+BWD_IAT_MAX | Bwd IAT Max | Maximum inter-arrival time between backward packets.
+BWD_IAT_MIN | Bwd IAT Min | Minimum inter-arrival time between backward packets.
+FWD_PSH_FLAGS | Fwd PSH Flags | Count/indicator of PSH flag occurrences in forward packets.
+BWD_PSH_FLAGS | Bwd PSH Flags | Count/indicator of PSH flag occurrences in backward packets.
+FWD_URG_FLAGS | Fwd URG Flags | Count/indicator of URG flag occurrences in forward packets.
+BWD_URG_FLAGS | Bwd URG Flags | Count/indicator of URG flag occurrences in backward packets.
+FWD_HDR_LEN | Fwd Header Length | Total length of headers in forward direction (as computed by the feature extractor).
+BWD_HDR_LEN | Bwd Header Length | Total length of headers in backward direction (as computed by the feature extractor).
+FWD_PKTS_PER_S | Fwd Packets/s | Forward-direction packet rate (packets per second).
+BWD_PKTS_PER_S | Bwd Packets/s | Backward-direction packet rate (packets per second).
+PKT_LEN_MIN | Min Packet Length | Minimum packet length observed in the flow (either direction).
+PKT_LEN_MAX | Max Packet Length | Maximum packet length observed in the flow (either direction).
+PKT_LEN_MEAN | Packet Length Mean | Mean packet length over the flow.
+PKT_LEN_STD | Packet Length Std | Standard deviation of packet lengths over the flow.
+PKT_LEN_VAR | Packet Length Variance | Variance of packet lengths over the flow.
+TCP_FIN_CNT | FIN Flag Count | Number of packets with TCP FIN flag set.
+TCP_SYN_CNT | SYN Flag Count | Number of packets with TCP SYN flag set.
+TCP_RST_CNT | RST Flag Count | Number of packets with TCP RST flag set.
+TCP_PSH_CNT | PSH Flag Count | Number of packets with TCP PSH flag set.
+TCP_ACK_CNT | ACK Flag Count | Number of packets with TCP ACK flag set.
+TCP_URG_CNT | URG Flag Count | Number of packets with TCP URG flag set.
+TCP_CWE_CNT | CWE Flag Count | Number of packets with TCP CWE (ECN) flag set.
+TCP_ECE_CNT | ECE Flag Count | Number of packets with TCP ECE (ECN) flag set.
+DOWN_UP_RATIO | Down/Up Ratio | Ratio between backward and forward traffic volume (as defined by the extractor; commonly bwd-to-fwd packets).
+AVG_PKT_SIZE | Average Packet Size | Average packet size over the flow.
+AVG_FWD_SEG_SIZE | Avg Fwd Segment Size | Average forward TCP segment size (often aligns with forward packet payload size).
+AVG_BWD_SEG_SIZE | Avg Bwd Segment Size | Average backward TCP segment size (often aligns with backward packet payload size).
+FWD_HDR_LEN_DUP | Fwd Header Length.1 | Duplicate of forward header length feature (duplicate column in this dataset).
+FWD_BULK_AVG_BYTES | Fwd Avg Bytes/Bulk | Average bytes per forward bulk transfer event.
+FWD_BULK_AVG_PKTS | Fwd Avg Packets/Bulk | Average packets per forward bulk transfer event.
+FWD_BULK_AVG_RATE | Fwd Avg Bulk Rate | Average forward bulk transfer rate.
+BWD_BULK_AVG_BYTES | Bwd Avg Bytes/Bulk | Average bytes per backward bulk transfer event.
+BWD_BULK_AVG_PKTS | Bwd Avg Packets/Bulk | Average packets per backward bulk transfer event.
+BWD_BULK_AVG_RATE | Bwd Avg Bulk Rate | Average backward bulk transfer rate.
+SUBFLOW_FWD_PKTS | Subflow Fwd Packets | Number of forward packets in subflows (flow partitioning used by extractor).
+SUBFLOW_FWD_BYTES | Subflow Fwd Bytes | Number of forward bytes in subflows.
+SUBFLOW_BWD_PKTS | Subflow Bwd Packets | Number of backward packets in subflows.
+SUBFLOW_BWD_BYTES | Subflow Bwd Bytes | Number of backward bytes in subflows.
+INIT_WIN_BYTES_FWD | Init_Win_bytes_forward | Initial TCP window size (bytes) advertised in the forward direction.
+INIT_WIN_BYTES_BWD | Init_Win_bytes_backward | Initial TCP window size (bytes) advertised in the backward direction.
+ACT_DATA_PKT_FWD | act_data_pkt_fwd | Count of forward packets that carry application data (payload).
+MIN_SEG_SIZE_FWD | min_seg_size_forward | Minimum observed forward segment size.
+ACTIVE_MEAN | Active Mean | Mean duration of "active" periods within the flow (bursts of activity).
+ACTIVE_STD | Active Std | Standard deviation of active period durations.
+ACTIVE_MAX | Active Max | Maximum active period duration.
+ACTIVE_MIN | Active Min | Minimum active period duration.
+IDLE_MEAN | Idle Mean | Mean duration of "idle" periods within the flow (gaps/silence).
+IDLE_STD | Idle Std | Standard deviation of idle period durations.
+IDLE_MAX | Idle Max | Maximum idle period duration.
+IDLE_MIN | Idle Min | Minimum idle period duration.
+LABEL | Label | Ground-truth class label (e.g., BENIGN or attack type/group).

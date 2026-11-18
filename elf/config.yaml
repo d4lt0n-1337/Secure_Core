@@ -1,0 +1,2 @@
+api_token: "sk_live_securecore_k4rvbyrQyEw-iv9BqA8YFkW409SbxWXzyeUicn4EOfFWSGOKXX0kIf6XDoTLSHyv"
+endpoint: "http://localhost:5000/ws/inference"

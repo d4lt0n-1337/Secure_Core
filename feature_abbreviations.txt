@@ -1,0 +1,50 @@
+CIC-IDS2017 Feature Abbreviations (from column names)
+
+Direction / flow terms
+- Fwd = Forward (source  destination direction of the flow)
+- Bwd = Backward (destination  source direction of the flow)
+- Flow = Network flow (bidirectional communication session)
+- Subflow = A sub-part of a flow used for flow-level aggregation
+
+Time / rate terms
+- IAT = Inter-Arrival Time (time between consecutive packets)
+- /s = Per second (rate)
+
+Statistics terms
+- Avg = Average
+- Mean = Mean (average)
+- Std = Standard deviation
+- Var / Variance = Variance
+- Min = Minimum
+- Max = Maximum
+- Total = Sum over the flow
+- Len / Length = Length
+- Ratio = Ratio
+
+TCP flag abbreviations (in "Flag Count" features)
+- FIN = Finish flag
+- SYN = Synchronize flag
+- RST = Reset flag
+- PSH = Push flag
+- ACK = Acknowledgment flag
+- URG = Urgent flag
+- CWE = Congestion Window Reduced flag (ECN-related)
+- ECE = ECN Echo flag (ECN-related)
+
+Window / segment / packet shorthand (underscore-style features)
+- Init = Initial
+- Win = Window (TCP receive window)
+- bytes = Bytes
+- pkt = Packet
+- seg = Segment
+- act = Active / activity
+- data = Payload data
+- min = Minimum
+- size = Size
+
+Examples from this notebook's columns
+- Fwd IAT Mean = Forward-direction inter-arrival time mean
+- Flow Bytes/s = Flow bytes per second
+- Init_Win_bytes_forward = Initial TCP window bytes (forward direction)
+- act_data_pkt_fwd = Active data packets in the forward direction
+- min_seg_size_forward = Minimum segment size in the forward direction
