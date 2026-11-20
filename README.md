@@ -1,4 +1,4 @@
-# SecureCore IDS — AI-Powered Enterprise Intrusion Detection & Prevention SaaS Platform
+# SecureCore IDS — A Cloud-Assisted SaaS Architecture for Multi-Class Intrusion Detection in Encrypted Network Traffic
 
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Backend-Flask%20%7C%20SQLAlchemy-red?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
